@@ -3,10 +3,11 @@ import RPi.GPIO as GPIO
 import time
 import datetime
 import Queue
+import bme280
 
 
 def tip_event(channel):
-    time = datetime.datetime.utcnow()
+    timestamp = datetime.datetime.utcnow()
     if channel == tipping_bucket_pin:
         # Add to tipping bucket log
         q.put([timestamp, channel])
@@ -25,10 +26,19 @@ def tip_event(channel):
 def open_dayfile():
     timestamp = time = datetime.datetime.utcnow()
     strdate = timestamp.strftime('%m-%d-%Y')
-    tipping_bucket_file = open('data/tipping_bucket/' + strdate + '.txt', 'wa')
-    optical_bucket_file = open('data/optical_bucket/' + strdate + '.txt', 'wa')
-    metdata_file = open('data/metdata/' + strdate + '.txt', 'wa')
+    tipping_bucket_file = open('./data/tipping_bucket/' + strdate + '.txt', 'w+')
+    optical_bucket_file = open('./data/optical_bucket/' + strdate + '.txt', 'w+')
+    metdata_file = open('./data/metdata/' + strdate + '.txt', 'w+')
     return tipping_bucket_file, optical_bucket_file, metdata_file
+
+def write_queue_element(element):
+    timestr = element[0].strftime('%H:%M:%S.%f')
+    if element[1] == tipping_bucket_pin:
+        tipping_count = 0
+        tipping_bucket_file.write('%s,%d\n' %(timestr, tipping_count))
+    elif element[1] == optical_bucket_pin:
+        optical_count = 0
+        tipping_bucket_file.write('%s,%d\n' %(timestr, optical_count))
 
 tipping_bucket_pin = 7  # Red wire
 optical_bucket_pin = 8  # Orange wire
@@ -45,26 +55,36 @@ print("Starting data files")
 tipping_bucket_file, optical_bucket_file, metdata_file = open_dayfile()
 
 logged_minute = datetime.datetime.utcnow().minute
-logged_data = datetime.datetime.utcnow().day
+logged_day = datetime.datetime.utcnow().day
 q = Queue.Queue()
-
+tipping_count = 0
+optical_count = 0
 while True:
     # If the day has changed, let's close the old and start new logfiles
-    tipping_bucket_file.close()
-    optical_bucket_file.close()
-    metdata_file.close()
-    tipping_bucket_file, optical_bucket_file, metdata_file = open_dayfile()
+    current_day = datetime.datetime.utcnow().day
+    if logged_day != current_day:
+        logged_day = current_day
+        tipping_count = 0
+        optical_count = 0
+        tipping_bucket_file.close()
+        optical_bucket_file.close()
+        metdata_file.close()
+        tipping_bucket_file, optical_bucket_file, metdata_file = open_dayfile()
 
     # See if it's time to read the T,RH,P and log it if so
     current_minute = datetime.datetime.utcnow().minute
     if current_minute != logged_minute:
         # Time to log!
+        logged_minute = current_minute
         temperature, pressure, humidity = bme280.readBME280All()
-        metdata_file.write("%.2f,%.2f,%.2f\n" %(temperature, pressure, humidity))
+        ts = datetime.datetime.utcnow().strftime('%H:%M')
+        metdata_file.write("%s,%.2f,%.2f,%.2f\n" %(ts, temperature, pressure, humidity))
     else:
         time.sleep(5)
         print("Checking to see if I need to log the T,RH,P sensor")
 
+    while not q.empty():
+        print write_queue_element(q.get())
 tipping_bucket_file.close()
 optical_bucket_file.close()
 metdata_file.close()
