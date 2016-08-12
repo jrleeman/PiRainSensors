@@ -4,6 +4,7 @@ import time
 import datetime
 import Queue
 import bme280
+import os
 
 
 def tip_event(channel):
@@ -26,9 +27,9 @@ def tip_event(channel):
 def open_dayfile():
     timestamp = time = datetime.datetime.utcnow()
     strdate = timestamp.strftime('%m-%d-%Y')
-    tipping_bucket_file = open('./data/tipping_bucket/' + strdate + '.txt', 'w+')
-    optical_bucket_file = open('./data/optical_bucket/' + strdate + '.txt', 'w+')
-    metdata_file = open('./data/metdata/' + strdate + '.txt', 'w+')
+    tipping_bucket_file = open('/home/pi/PiRainSensors/data/tipping_bucket/' + strdate + '.txt', 'w+')
+    optical_bucket_file = open('/home/pi/PiRainSensors/data/optical_bucket/' + strdate + '.txt', 'w+')
+    metdata_file = open('/home/pi/PiRainSensors/data/metdata/' + strdate + '.txt', 'w+')
     return tipping_bucket_file, optical_bucket_file, metdata_file
 
 def write_queue_element(element):
@@ -38,7 +39,7 @@ def write_queue_element(element):
         tipping_bucket_file.write('%s,%d\n' %(timestr, tipping_count))
     elif element[1] == optical_bucket_pin:
         optical_count = 0
-        tipping_bucket_file.write('%s,%d\n' %(timestr, optical_count))
+        optical_bucket_file.write('%s,%d\n' %(timestr, optical_count))
 
 tipping_bucket_pin = 7  # Red wire
 optical_bucket_pin = 8  # Orange wire
@@ -79,6 +80,12 @@ while True:
         temperature, pressure, humidity = bme280.readBME280All()
         ts = datetime.datetime.utcnow().strftime('%H:%M')
         metdata_file.write("%s,%.2f,%.2f,%.2f\n" %(ts, temperature, pressure, humidity))
+        metdata_file.flush()
+        tipping_bucket_file.flush()
+        optical_bucket_file.flush()
+        os.fsync(metdata_file.fileno())
+        os.fsync(tipping_bucket_file.fileno())
+        os.fsync(optical_bucket_file.fileno())
     else:
         time.sleep(5)
         print("Checking to see if I need to log the T,RH,P sensor")
