@@ -27,9 +27,9 @@ def tip_event(channel):
 def open_dayfile():
     timestamp = time = datetime.datetime.utcnow()
     strdate = timestamp.strftime('%m-%d-%Y')
-    tipping_bucket_file = open('/home/pi/PiRainSensors/data/tipping_bucket/' + strdate + '.txt', 'w+')
-    optical_bucket_file = open('/home/pi/PiRainSensors/data/optical_bucket/' + strdate + '.txt', 'w+')
-    metdata_file = open('/home/pi/PiRainSensors/data/metdata/' + strdate + '.txt', 'w+')
+    tipping_bucket_file = open('/home/pi/PiRainSensors/data/tipping_bucket/' + strdate + '.txt', 'a+')
+    optical_bucket_file = open('/home/pi/PiRainSensors/data/optical_bucket/' + strdate + '.txt', 'a+')
+    metdata_file = open('/home/pi/PiRainSensors/data/metdata/' + strdate + '.txt', 'a+')
     return tipping_bucket_file, optical_bucket_file, metdata_file
 
 def write_queue_element(element):
